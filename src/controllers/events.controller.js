@@ -3,13 +3,13 @@ import {
   listEventsService,
   getEventByIdService,
   updateEventService,
-  deleteEventService,
+  updateEventStatusService,
 } from '../services/events.service.js';
 
 export const getEvents = async (req, res) => {
   try {
-    const events = await listEventsService();
-    res.status(200).json({ status: 'success', payload: events });
+    const result = await listEventsService(req.query);
+    res.status(200).json(result);
   } catch (error) {
     res.status(error.statusCode || 500).json({ status: 'error', message: error.message });
   }
@@ -44,11 +44,11 @@ export const updateEvent = async (req, res) => {
   }
 };
 
-export const deleteEvent = async (req, res) => {
+export const updateEventStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    await deleteEventService(id, req.user);
-    res.status(200).json({ status: 'success', message: 'Evento eliminado correctamente' });
+    const updatedEvent = await updateEventStatusService(id, req.user, req.body.status);
+    res.status(200).json({ status: 'success', payload: updatedEvent });
   } catch (error) {
     res.status(error.statusCode || 500).json({ status: 'error', message: error.message });
   }
