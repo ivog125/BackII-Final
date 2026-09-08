@@ -180,8 +180,8 @@ export const updateEventService = async (eventId, user, updateData) => {
     throw notFoundError();
   }
 
-  assertNotCancelled(event);
   assertOwnership(event, user);
+  assertNotCancelled(event);
 
   // organizer es inmutable: si viene en el body, se ignora silenciosamente
   const { organizer, ...safeUpdateData } = updateData;
@@ -216,8 +216,8 @@ export const updateEventStatusService = async (eventId, user, status) => {
     throw notFoundError();
   }
 
-  assertNotCancelled(event);
   assertOwnership(event, user);
+  assertNotCancelled(event);
 
   if (status === 'published' && event.status === 'finished') {
     throw conflict('No se puede publicar un evento ya finalizado');
