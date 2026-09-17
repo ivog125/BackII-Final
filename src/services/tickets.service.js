@@ -1,18 +1,14 @@
-import mongoose from 'mongoose';
 import { getEventByIdService } from './events.service.js';
 import {
   create,
   findById,
   findActiveByUserAndEvent,
-  findActiveByEvent,
+  countActiveQuantityForEvent,
   findByUser,
   findByEvent,
-  update,
+  cancelTicket,
 } from '../repositories/tickets.repository.js';
-import { generateReservationCode } from '../models/Ticket.js';
 import { mailer } from '../utils/mailer.js';
-
-const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 
 const notFoundError = (message) => {
   const error = new Error(message);
@@ -60,8 +56,6 @@ const assertTicketOwnerOrAdmin = (ticket, user) => {
   }
 };
 
-const sumActiveQuantity = (tickets) => tickets.reduce((total, ticket) => total + ticket.quantity, 0);
-
 export const createTicketService = async (user, eventId, { quantity }) => {
   // 1. quantity es un número válido > 0
   const parsedQuantity = Number(quantity);
@@ -84,8 +78,7 @@ export const createTicketService = async (user, eventId, { quantity }) => {
   }
 
   // 5. hay cupo suficiente
-  const activeTickets = await findActiveByEvent(eventId);
-  const reservedQuantity = sumActiveQuantity(activeTickets);
+  const reservedQuantity = await countActiveQuantityForEvent(eventId);
   const availableSpots = event.capacity - reservedQuantity;
   if (parsedQuantity > availableSpots) {
     throw conflict(`Quedan ${availableSpots} cupos disponibles, pediste ${parsedQuantity}`);
@@ -96,7 +89,6 @@ export const createTicketService = async (user, eventId, { quantity }) => {
     event: eventId,
     quantity: parsedQuantity,
     status: 'confirmed',
-    reservationCode: generateReservationCode(),
   });
 
   try {
@@ -128,10 +120,6 @@ export const listEventTicketsService = async (eventId, user) => {
 };
 
 export const cancelTicketService = async (ticketId, user) => {
-  if (!isValidObjectId(ticketId)) {
-    throw notFoundError('Ticket no encontrado');
-  }
-
   const ticket = await findById(ticketId);
   if (!ticket) {
     throw notFoundError('Ticket no encontrado');
@@ -143,6 +131,6 @@ export const cancelTicketService = async (ticketId, user) => {
     throw conflict('El ticket ya está cancelado');
   }
 
-  const cancelledTicket = await update(ticketId, { status: 'cancelled', cancelledAt: new Date() });
+  const cancelledTicket = await cancelTicket(ticketId);
   return cancelledTicket;
 };

@@ -1,9 +1,5 @@
 import mongoose from 'mongoose';
-import crypto from 'crypto';
-
-export const TICKET_STATUSES = ['confirmed', 'pending', 'cancelled'];
-
-export const generateReservationCode = () => crypto.randomBytes(4).toString('hex').toUpperCase();
+import { TICKET_STATUSES } from '../constants/ticket.constants.js';
 
 const ticketSchema = new mongoose.Schema(
   {

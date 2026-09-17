@@ -1,10 +1,7 @@
-import mongoose from 'mongoose';
-import { create, findAll, count, findById, update } from '../repositories/events.repository.js';
-import { EVENT_STATUSES } from '../models/Event.js';
+import { create, searchEvents, findById, update } from '../repositories/events.repository.js';
+import { EVENT_STATUSES } from '../constants/event.constants.js';
 
 const REQUIRED_FIELDS = ['title', 'description', 'category', 'location', 'date', 'capacity', 'price'];
-
-const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 
 const isMissing = (value) => value === undefined || value === null || value === '';
 
@@ -60,6 +57,22 @@ const parseEventDate = (date) => {
   return parsedDate;
 };
 
+const parsePositiveNumber = (value, message) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw badRequest(message);
+  }
+  return parsed;
+};
+
+const parseNonNegativeNumber = (value, message) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw badRequest(message);
+  }
+  return parsed;
+};
+
 const validateEventInput = (eventData) => {
   const missing = REQUIRED_FIELDS.filter((field) => isMissing(eventData[field]));
   if (missing.length) {
@@ -69,14 +82,8 @@ const validateEventInput = (eventData) => {
   const { title, description, category, location, date, capacity, price } = eventData;
 
   const parsedDate = parseEventDate(date);
-
-  if (Number(capacity) <= 0) {
-    throw badRequest('La capacidad debe ser mayor a 0');
-  }
-
-  if (Number(price) < 0) {
-    throw badRequest('El precio no puede ser negativo');
-  }
+  const parsedCapacity = parsePositiveNumber(capacity, 'La capacidad debe ser mayor a 0');
+  const parsedPrice = parseNonNegativeNumber(price, 'El precio no puede ser negativo');
 
   return {
     title,
@@ -84,27 +91,9 @@ const validateEventInput = (eventData) => {
     category,
     location,
     date: parsedDate,
-    capacity: Number(capacity),
-    price: Number(price),
+    capacity: parsedCapacity,
+    price: parsedPrice,
   };
-};
-
-const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-const buildDateRangeFilter = (dateFrom, dateTo) => {
-  const range = {};
-
-  if (dateFrom) {
-    const from = new Date(dateFrom);
-    if (!Number.isNaN(from.getTime())) range.$gte = from;
-  }
-
-  if (dateTo) {
-    const to = new Date(dateTo);
-    if (!Number.isNaN(to.getTime())) range.$lte = to;
-  }
-
-  return Object.keys(range).length ? range : undefined;
 };
 
 export const createEventService = async (organizerId, eventData) => {
@@ -124,16 +113,6 @@ export const listEventsService = async (query = {}) => {
 
   const page = Math.max(parseInt(query.page, 10) || 1, 1);
   const limit = Math.max(parseInt(query.limit, 10) || 10, 1);
-  const skip = (page - 1) * limit;
-
-  const filter = {};
-
-  if (status) filter.status = status;
-  if (category) filter.category = { $regex: new RegExp(`^${escapeRegex(category)}$`, 'i') };
-  if (location) filter.location = { $regex: new RegExp(`^${escapeRegex(location)}$`, 'i') };
-
-  const dateRange = buildDateRangeFilter(dateFrom, dateTo);
-  if (dateRange) filter.date = dateRange;
 
   let sortOption = { createdAt: -1 };
   if (sort) {
@@ -142,7 +121,16 @@ export const listEventsService = async (query = {}) => {
     sortOption = { [field]: direction };
   }
 
-  const [data, total] = await Promise.all([findAll({ filter, skip, limit, sort: sortOption }), count(filter)]);
+  const { data, total } = await searchEvents({
+    status,
+    category,
+    location,
+    dateFrom,
+    dateTo,
+    page,
+    limit,
+    sort: sortOption,
+  });
 
   return {
     data,
@@ -154,10 +142,6 @@ export const listEventsService = async (query = {}) => {
 };
 
 export const getEventByIdService = async (eventId) => {
-  if (!isValidObjectId(eventId)) {
-    throw notFoundError();
-  }
-
   const event = await findById(eventId);
   if (!event) {
     throw notFoundError();
@@ -167,10 +151,6 @@ export const getEventByIdService = async (eventId) => {
 };
 
 export const updateEventService = async (eventId, user, updateData) => {
-  if (!isValidObjectId(eventId)) {
-    throw notFoundError();
-  }
-
   if (Object.prototype.hasOwnProperty.call(updateData, 'status')) {
     throw badRequest('usá PATCH /api/events/:id/status');
   }
@@ -190,12 +170,12 @@ export const updateEventService = async (eventId, user, updateData) => {
     safeUpdateData.date = parseEventDate(safeUpdateData.date);
   }
 
-  if (safeUpdateData.capacity !== undefined && Number(safeUpdateData.capacity) <= 0) {
-    throw badRequest('La capacidad debe ser mayor a 0');
+  if (safeUpdateData.capacity !== undefined) {
+    safeUpdateData.capacity = parsePositiveNumber(safeUpdateData.capacity, 'La capacidad debe ser mayor a 0');
   }
 
-  if (safeUpdateData.price !== undefined && Number(safeUpdateData.price) < 0) {
-    throw badRequest('El precio no puede ser negativo');
+  if (safeUpdateData.price !== undefined) {
+    safeUpdateData.price = parseNonNegativeNumber(safeUpdateData.price, 'El precio no puede ser negativo');
   }
 
   const updatedEvent = await update(eventId, safeUpdateData);
@@ -203,10 +183,6 @@ export const updateEventService = async (eventId, user, updateData) => {
 };
 
 export const updateEventStatusService = async (eventId, user, status) => {
-  if (!isValidObjectId(eventId)) {
-    throw notFoundError();
-  }
-
   if (!EVENT_STATUSES.includes(status)) {
     throw badRequest(`Estado inválido. Valores permitidos: ${EVENT_STATUSES.join(', ')}`);
   }

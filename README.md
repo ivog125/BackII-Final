@@ -2,7 +2,7 @@
 
 Plataforma de Eventos e Inscripciones — backend base construido con Node.js y Express.
 
-Este proyecto se desarrolla de forma incremental, en entregas sucesivas. La primera entrega cubrió la base arquitectónica (configuración del servidor, estructura de carpetas por capas y rutas mínimas de verificación). La segunda entrega sumó el registro seguro de usuarios: validación de datos, normalización de email, hash de contraseñas con bcrypt y persistencia en MongoDB. La tercera entrega agregó autenticación completa: login con JWT, cookie httpOnly, una ruta protegida (`/current`) y logout. La cuarta entrega centralizó esa autenticación en **Passport.js**: el registro, el login y la verificación de `/current` viven como estrategias de Passport en lugar de lógica manual repartida entre servicio y middleware. La quinta entrega agregó **autorización por roles**: el recurso de eventos ya tenía lógica real (antes devolvía una lista vacía hardcodeada), protegido por dos middlewares reutilizables que diferencian explícitamente "no estás autenticado" (`401`) de "estás autenticado pero no tenés permiso" (`403`), sumando una validación de propiedad para que un `organizer` solo pueda modificar sus propios eventos. La sexta entrega reescribió por completo el recurso `events` con el modelo de negocio real (`title`, `description`, `category`, `date`, `location`, `capacity`, `price`, `status`, `organizer`), agregó el ciclo de vida de estados (`draft` → `published` → `finished`, con `cancelled` como estado terminal), validaciones de negocio en la capa de `services`, y un listado con filtros, paginación y ordenamiento. Esta séptima entrega agrega el recurso `tickets`: inscripción a eventos con control de cupos, una sola inscripción activa por usuario y evento, cancelación (que libera el cupo) y un email de confirmación por Nodemailer que nunca hace fallar la inscripción si el envío falla.
+Este proyecto se desarrolla de forma incremental, en entregas sucesivas. La primera entrega cubrió la base arquitectónica (configuración del servidor, estructura de carpetas por capas y rutas mínimas de verificación). La segunda entrega sumó el registro seguro de usuarios: validación de datos, normalización de email, hash de contraseñas con bcrypt y persistencia en MongoDB. La tercera entrega agregó autenticación completa: login con JWT, cookie httpOnly, una ruta protegida (`/current`) y logout. La cuarta entrega centralizó esa autenticación en **Passport.js**: el registro, el login y la verificación de `/current` viven como estrategias de Passport en lugar de lógica manual repartida entre servicio y middleware. La quinta entrega agregó **autorización por roles**: el recurso de eventos ya tenía lógica real (antes devolvía una lista vacía hardcodeada), protegido por dos middlewares reutilizables que diferencian explícitamente "no estás autenticado" (`401`) de "estás autenticado pero no tenés permiso" (`403`), sumando una validación de propiedad para que un `organizer` solo pueda modificar sus propios eventos. La sexta entrega reescribió por completo el recurso `events` con el modelo de negocio real (`title`, `description`, `category`, `date`, `location`, `capacity`, `price`, `status`, `organizer`), agregó el ciclo de vida de estados (`draft` → `published` → `finished`, con `cancelled` como estado terminal), validaciones de negocio en la capa de `services`, y un listado con filtros, paginación y ordenamiento. La séptima entrega agregó el recurso `tickets`: inscripción a eventos con control de cupos, una sola inscripción activa por usuario y evento, cancelación (que libera el cupo) y un email de confirmación por Nodemailer que nunca hace fallar la inscripción si el envío falla. Esta octava entrega es un refactor puro de arquitectura, sin funcionalidad nueva: formaliza las capas DAO → Repository → Service → Controller → DTO en todo el proyecto (incluida la lógica de registro/login, que hasta ahora vivía dentro de las estrategias de Passport) y centraliza el manejo de errores. El contrato externo de cada endpoint no cambió, con una sola excepción documentada en [Arquitectura en capas](#arquitectura-en-capas): una validación de `capacity`/`price` que dejaba pasar valores no numéricos.
 
 ## Temática elegida
 
@@ -68,22 +68,50 @@ npm start
 ├── src/
 │   ├── app.js # Configuración de Express (middlewares, passport.initialize(), routers, error handler)
 │ ├── server.js # Punto de entrada: carga env, conecta DB y levanta el servidor
-│ ├── config/ # Configuración centralizada: env, conexión a MongoDB y passport.config.js (estrategias)
+│ ├── config/ # Configuración centralizada: env, conexión a MongoDB y passport.config.js (estrategias, adaptador fino)
 │ ├── routes/ # Definición de rutas por recurso (events, sessions, users, tickets)
-│ ├── controllers/ # Controladores asociados a cada ruta
-│ ├── services/ # Lógica de negocio (eventos, tickets: cupos, inscripción, cancelación)
-│ ├── repositories/ # Acceso a datos desacoplado
-│ ├── dao/ # Data Access Objects (interacción directa con Mongoose)
+│ ├── controllers/ # Coordinan request/response; aplican el DTO antes de responder
+│ ├── services/ # Toda la lógica de negocio; consumen solo repositories
+│ ├── repositories/ # Métodos orientados al dominio; consumen solo el DAO
+│ ├── dao/ # Data Access Objects: los únicos archivos que importan modelos de Mongoose
+│ ├── dto/ # Formato de salida sanitizado por entidad (nunca expone password)
+│ ├── constants/ # Enums compartidos entre modelos y services (estados de Event/Ticket)
 │ ├── models/ # Modelos de Mongoose (User, Event, Ticket)
-│ ├── middlewares/ # auth.middleware.js (autenticación) y authorize.middleware.js (autorización por rol)
-│ └── utils/ # hash.js (bcrypt), jwt.js (firmar/verificar tokens) y mailer.js (email de confirmación)
+│ ├── middlewares/ # auth.middleware.js (autenticación), authorize.middleware.js (autorización por rol) y errorHandler.middleware.js (errores centralizados)
+│ └── utils/ # hash.js (bcrypt), jwt.js (JWT), mailer.js (email), catchAsync.js (wrapper de errores async) y reservationCode.js
 ├── .env.example
 ├── .gitignore
 ├── package.json
 └── README.md
 ```
 
-Nota sobre `auth.middleware.js`: en la entrega anterior se había eliminado (su función la cumplía una estrategia de Passport llamada directamente desde el router de sesiones). En esta entrega se recreó como un archivo propio en `middlewares/` para que también lo pueda usar `events.router.js` y `users.router.js` — por dentro sigue llamando a la misma estrategia `current` de Passport, no se duplicó lógica de verificación de JWT.
+Nota sobre `auth.middleware.js`: en la entrega 5 se había eliminado (su función la cumplía una estrategia de Passport llamada directamente desde el router de sesiones), y se recreó en la entrega 5 como archivo propio para que también lo usaran `events.router.js` y `users.router.js` — por dentro sigue llamando a la misma estrategia `current` de Passport, no se duplicó lógica de verificación de JWT.
+
+## Arquitectura en capas
+
+Esta entrega formalizó la separación en 5 capas para `events`, `tickets`, `users` y `sessions`. Cada capa tiene una única responsabilidad y solo puede hablar con la capa inmediatamente inferior:
+
+```
+Router → Controller → Service → Repository → DAO → Modelo de Mongoose
+                          ↑
+                        DTO (lo usa el Controller para dar forma a la respuesta)
+```
+
+- **DAO** (`src/dao/`) — `users.dao.js`, `events.dao.js`, `tickets.dao.js`. Son los **únicos** archivos de todo el proyecto que importan un modelo de Mongoose. Exponen un mapeo delgado sobre Mongoose (`findById`, `find`, `create`, `updateById`, `countDocuments`...), sin ninguna regla de negocio. También son responsables de blindar a las capas de arriba de los detalles de Mongoose: por ejemplo, `findEventById`/`findTicketById` validan el formato del `id` (`mongoose.Types.ObjectId.isValid`) y devuelven `null` ante un formato inválido, en vez de dejar que Mongoose tire un `CastError` sin manejar.
+- **Repository** (`src/repositories/`) — `users.repository.js`, `events.repository.js`, `tickets.repository.js`. Usan el DAO correspondiente y exponen métodos con nombres de dominio, no de base de datos: `findByEmail`, `searchEvents` (arma el filtro de Mongo con `$regex`/`$gte`/`$lte` a partir de criterios de negocio como `category`/`dateFrom`/`dateTo` — el service no sabe qué es un operador de Mongo), `countActiveQuantityForEvent`, `cancelTicket`. También es donde se genera el `reservationCode` de un ticket nuevo (en `create`), así ningún valor que venga del body puede pisarlo.
+- **Service** (`src/services/`) — toda la lógica de negocio: validación de campos y formatos, cupos, transiciones de estado de un evento, detección de inscripciones duplicadas, permisos sobre recursos propios (`organizer` dueño de un evento, dueño de un ticket), disparo del email de confirmación. Los services **solo** importan repositories — nunca un DAO ni un modelo. Incluye `sessions.service.js` (nuevo en esta entrega): la validación de registro/login que antes vivía dentro de las estrategias de Passport (`register`/`login` en `passport.config.js`) ahora es `registerUserService`/`loginUserService`, con el mismo patrón de errores (`Error` + `statusCode`) que ya usan `events.service.js`/`tickets.service.js`. Las estrategias de Passport quedaron como adaptadores finos: llaman al service y traducen el resultado a `done(...)`.
+- **Controller** (`src/controllers/`) — solo coordinan request/response: leen `body`/`params`/`query`, llaman al service, arman la respuesta con el DTO correspondiente. No importan modelos ni contienen cálculos. Todos están envueltos en `catchAsync` (`src/utils/catchAsync.js`), así que ya no tienen su propio `try/catch` — cualquier error (de negocio o inesperado) llega al middleware de errores centralizado.
+- **DTO** (`src/dto/`) — `UserDTO`, `EventDTO`, `TicketDTO`. Cada uno es una función tolerante: mapea los campos que existan en la entidad que recibe y deja `undefined` en los que no, así el mismo `UserDTO` sirve tanto para un documento completo de Mongoose como para el payload de un JWT (que no tiene `first_name`/`last_name`) — los campos ausentes se caen solos al serializar a JSON. `UserDTO` renombra `_id` a `id`, que es el formato que ya usaban `POST /api/sessions/register` y `GET /api/sessions/current` antes de esta entrega; por eso se usa únicamente ahí. `EventDTO` preserva `_id` tal cual (es lo que siempre devolvió el recurso `events`). `TicketDTO` preserva `_id` del ticket y, cuando `event`/`user` vienen poblados (un sub-documento con `title`/`first_name`, según corresponda), los pasa por un mapeo explícito de campos en vez de reenviar el sub-documento crudo de Mongoose — el evento poblado usa `EventDTO`, pero el usuario poblado usa un mapeo propio (no `UserDTO`) que también preserva `_id`, porque así es como esa respuesta se comportó siempre y no había ninguna razón de negocio para cambiarla en un refactor que se definió como "sin cambios de comportamiento". Cuando `user`/`event` no vienen poblados (son solo el `ObjectId` de referencia), `TicketDTO` los deja pasar como string, sin intentar mapearlos como objeto. Ningún DTO incluye `password` bajo ningún campo ni anidamiento — verificado explícitamente para el caso del `user` poblado, que es el único punto de todo el proyecto donde un dato de `User` llega a un DTO por un camino que no sea el propio usuario autenticado.
+
+### Manejo de errores centralizado
+
+`src/middlewares/errorHandler.middleware.js` es el único lugar de todo el proyecto que arma una respuesta de error. Antes, cada controller tenía su propio `try/catch` con la misma lógica repetida 15 veces (`res.status(error.statusCode || 500).json(...)`); ahora cada controller está envuelto en `catchAsync`, que reenvía cualquier error a este middleware con `next(error)`.
+
+Regla única para los 5 códigos que usa la API:
+- Si el error tiene `statusCode` (lo lanzó un service de forma intencional: `400`, `401`, `403`, `404` o `409`), se responde con ese código y `error.message` tal cual.
+- Si el error **no** tiene `statusCode` (una excepción no prevista — un bug, una caída de Mongo, etc.), se responde `500` con un mensaje genérico (`"Error interno del servidor"`) y se loguea el error real en el server con `console.error`. El mensaje interno nunca se expone al cliente en este caso.
+
+**Corrección de códigos mal usados que salió de esta revisión:** en `events.service.js`, la validación de `capacity`/`price` hacía `Number(valor) <= 0` sin chequear `NaN` — si el body mandaba `capacity: "abc"`, `Number("abc")` es `NaN`, y `NaN <= 0` da `false` en JavaScript, así que la validación pasaba de largo. El valor inválido llegaba hasta Mongoose, que tiraba un `CastError` sin `statusCode` al guardar, y terminaba respondiendo `500` en vez de `400`. Se agregó `Number.isFinite(...)` a esa validación (mismo patrón que ya usaba `tickets.service.js` para `quantity`, que ahí sí estaba bien hecho desde la entrega anterior).
 
 ## Autenticación con Passport.js
 
@@ -458,12 +486,14 @@ Con un usuario `admin` (`200`, sin el campo `password` en ningún usuario):
 {
   "status": "success",
   "payload": [
-    { "id": "665f2a...", "first_name": "Ada", "last_name": "Lovelace", "email": "ada@example.com", "role": "user" }
+    { "_id": "665f2a...", "first_name": "Ada", "last_name": "Lovelace", "email": "ada@example.com", "role": "user" }
   ]
 }
 ```
 
 Con `organizer` (`403`) o sin cookie (`401`) — mismos mensajes que en el resto del proyecto.
+
+Nota: este ejemplo documentaba antes `id` en vez de `_id`, pero eso nunca reflejó lo que el controller devolvía realmente — es una corrección de la documentación, no un cambio de comportamiento. `GET /api/users` siempre devolvió (y sigue devolviendo) `_id`, igual que el `user` poblado dentro de `GET /api/events/:eid/tickets` (más abajo). El único lugar de la API que usa `id` en vez de `_id` es el usuario autenticado (`POST /api/sessions/register` y `GET /api/sessions/current`), sin cambios en esta entrega.
 
 ### Logout (`POST /api/sessions/logout`)
 

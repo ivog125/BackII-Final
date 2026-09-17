@@ -1,8 +1,14 @@
+import mongoose from 'mongoose';
 import Ticket from '../models/Ticket.js';
 
 export const createTicket = (ticketData) => Ticket.create(ticketData);
 
-export const findTicketById = (id) => Ticket.findById(id);
+export const findTicketById = (id) => {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return Promise.resolve(null);
+  }
+  return Ticket.findById(id);
+};
 
 export const findActiveTicketByUserAndEvent = (userId, eventId) =>
   Ticket.findOne({ user: userId, event: eventId, status: { $ne: 'cancelled' } });

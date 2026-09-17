@@ -5,6 +5,7 @@ import eventsRouter from './routes/events.router.js';
 import sessionsRouter from './routes/sessions.router.js';
 import usersRouter from './routes/users.router.js';
 import ticketsRouter from './routes/tickets.router.js';
+import { errorHandler } from './middlewares/errorHandler.middleware.js';
 
 const app = express();
 
@@ -27,9 +28,6 @@ app.use((req, res) => {
   res.status(404).json({ status: 'error', message: 'Recurso no encontrado' });
 });
 
-app.use((err, req, res, next) => {
-  console.error(err);
-  res.status(500).json({ status: 'error', message: 'Error interno del servidor' });
-});
+app.use(errorHandler);
 
 export default app;
