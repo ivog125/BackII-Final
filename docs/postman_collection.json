@@ -1,13 +1,15 @@
 {
   "info": {
     "name": "Plataforma de Eventos e Inscripciones",
-    "description": "Colección de prueba end-to-end: sesiones, eventos y tickets. Postman maneja las cookies de sesión automáticamente (cookie jar por dominio). Cada bloque que necesita un rol distinto vuelve a loguearse explícitamente antes de la request que lo requiere, para que la colección corra de punta a punta sin depender del orden exacto en que Postman ejecute las carpetas.",
+    "description": "Colección de prueba end-to-end: sesiones, eventos y tickets. Requiere correr `npm run seed` antes (ver README, sección 15). Postman maneja las cookies de sesión automáticamente (cookie jar por dominio). Cada bloque que necesita un rol distinto vuelve a loguearse explícitamente antes de la request que lo requiere, para que la colección corra de punta a punta sin depender del orden exacto en que Postman ejecute las carpetas.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:8080", "type": "string" },
+    { "key": "newEmail", "value": "", "type": "string" },
     { "key": "eventId", "value": "", "type": "string" },
     { "key": "otherEventId", "value": "", "type": "string" },
+    { "key": "soldOutEventId", "value": "", "type": "string" },
     { "key": "ticketId", "value": "", "type": "string" }
   ],
   "item": [
@@ -21,12 +23,19 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"first_name\": \"Nuevo\",\n  \"last_name\": \"Usuario\",\n  \"email\": \"nuevo@eventos.com\",\n  \"password\": \"Password123\"\n}",
+              "raw": "{\n  \"first_name\": \"Nuevo\",\n  \"last_name\": \"Usuario\",\n  \"email\": \"{{newEmail}}\",\n  \"password\": \"Password123\"\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": { "raw": "{{baseUrl}}/api/sessions/register", "host": ["{{baseUrl}}"], "path": ["api", "sessions", "register"] }
           },
           "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.collectionVariables.set('newEmail', 'nuevo+' + Date.now() + '@eventos.com');"]
+              }
+            },
             { "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('201 Created', function () { pm.response.to.have.status(201); });"] } }
           ]
         },
@@ -229,17 +238,35 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/api/events?status=published&page=1&limit=5",
+              "raw": "{{baseUrl}}/api/events?status=published&page=2&limit=5",
               "host": ["{{baseUrl}}"],
               "path": ["api", "events"],
               "query": [
                 { "key": "status", "value": "published" },
-                { "key": "page", "value": "1" },
+                { "key": "page", "value": "2" },
                 { "key": "limit", "value": "5" }
               ]
             }
           },
-          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200 OK', function () { pm.response.to.have.status(200); });"] } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', function () { pm.response.to.have.status(200); });",
+                  "const json = pm.response.json();",
+                  "pm.test('status success', function () { pm.expect(json.status).to.eql('success'); });",
+                  "pm.test('data.length === 5', function () { pm.expect(json.data.length).to.eql(5); });",
+                  "pm.test('page === 2', function () { pm.expect(json.page).to.eql(2); });",
+                  "pm.test('limit === 5', function () { pm.expect(json.limit).to.eql(5); });",
+                  "pm.test('total es un número', function () { pm.expect(json.total).to.be.a('number'); });",
+                  "pm.test('totalPages es un número', function () { pm.expect(json.totalPages).to.be.a('number'); });",
+                  "pm.test('totalPages coincide con total/limit', function () { pm.expect(json.totalPages).to.eql(Math.ceil(json.total / json.limit)); });"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Obtener evento por id (público)",
@@ -325,6 +352,74 @@
           ]
         },
         {
+          "name": "Buscar 'Workshop cupo único' -> guarda soldOutEventId",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/events?category=Workshop&limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "events"],
+              "query": [
+                { "key": "category", "value": "Workshop" },
+                { "key": "limit", "value": "50" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', function () { pm.response.to.have.status(200); });",
+                  "const json = pm.response.json();",
+                  "const found = json.data.find(e => e.title === 'Workshop cupo único');",
+                  "pm.test(\"se encontró 'Workshop cupo único' en el seed\", function () { pm.expect(found).to.exist; });",
+                  "if (found) { pm.collectionVariables.set('soldOutEventId', found.id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "User1 ocupa el cupo único de 'Workshop cupo único' (esperado 201)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"quantity\": 1\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/events/{{soldOutEventId}}/tickets", "host": ["{{baseUrl}}"], "path": ["api", "events", "{{soldOutEventId}}", "tickets"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('201 Created', function () { pm.response.to.have.status(201); });"] } }]
+        },
+        {
+          "name": "Login - User2 (para probar cupo agotado)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"user2@eventos.com\",\n  \"password\": \"Password123\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/sessions/login", "host": ["{{baseUrl}}"], "path": ["api", "sessions", "login"] }
+          }
+        },
+        {
+          "name": "User2 se inscribe a 'Workshop cupo único' sin cupo (esperado 409)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"quantity\": 1\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/events/{{soldOutEventId}}/tickets", "host": ["{{baseUrl}}"], "path": ["api", "events", "{{soldOutEventId}}", "tickets"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('409 Conflict', function () { pm.response.to.have.status(409); });"] } }]
+        },
+        {
+          "name": "Login - User1 (retoma sesión para probar duplicado)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"user1@eventos.com\",\n  \"password\": \"Password123\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/sessions/login", "host": ["{{baseUrl}}"], "path": ["api", "sessions", "login"] }
+          }
+        },
+        {
           "name": "Inscripción duplicada (User1, esperado 409)",
           "request": {
             "method": "POST",
@@ -375,6 +470,26 @@
             "url": { "raw": "{{baseUrl}}/api/tickets/{{ticketId}}/cancel", "host": ["{{baseUrl}}"], "path": ["api", "tickets", "{{ticketId}}", "cancel"] }
           },
           "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200 OK', function () { pm.response.to.have.status(200); });"] } }]
+        },
+        {
+          "name": "User1 vuelve a inscribirse al mismo evento tras cancelar (esperado 201)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"quantity\": 1\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/events/{{eventId}}/tickets", "host": ["{{baseUrl}}"], "path": ["api", "events", "{{eventId}}", "tickets"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created: el cupo quedó libre tras cancelar', function () { pm.response.to.have.status(201); });"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Cancelar de nuevo el mismo ticket (esperado 409)",
