@@ -16,9 +16,11 @@ export const findActiveTicketByUserAndEvent = (userId, eventId) =>
 export const findActiveTicketsByEvent = (eventId) => Ticket.find({ event: eventId, status: { $ne: 'cancelled' } });
 
 export const findTicketsByUser = (userId) =>
-  Ticket.find({ user: userId }).sort({ createdAt: -1 }).populate('event', 'title date location');
+  Ticket.find({ user: userId }).sort({ createdAt: -1 }).populate('event', 'title date location status');
 
 export const findTicketsByEvent = (eventId) =>
   Ticket.find({ event: eventId }).sort({ createdAt: -1 }).populate('user', 'first_name last_name email');
 
 export const updateTicketById = (id, updateData) => Ticket.findByIdAndUpdate(id, updateData, { new: true });
+
+export const deleteAllTickets = () => Ticket.deleteMany({});

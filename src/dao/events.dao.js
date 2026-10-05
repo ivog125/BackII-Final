@@ -16,3 +16,5 @@ export const findEventById = (id) => {
 
 export const updateEventById = (id, updateData) =>
   Event.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+
+export const deleteAllEvents = () => Event.deleteMany({});

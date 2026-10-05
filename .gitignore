@@ -9,3 +9,7 @@ desktop.ini
 # Logs
 *.log
 npm-debug.log*
+
+# Scripts/artefactos locales de verificación manual (no forman parte del repo)
+verify-real.sh
+.verify-tmp/

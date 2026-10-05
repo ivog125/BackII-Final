@@ -1,25 +1,8 @@
 import { findByEmail, create } from '../repositories/users.repository.js';
 import { hashPassword, comparePassword } from '../utils/hash.js';
+import { badRequest, unauthorized, conflict } from '../utils/errors.js';
 
 const MIN_PASSWORD_LENGTH = 8;
-
-const badRequest = (message) => {
-  const error = new Error(message);
-  error.statusCode = 400;
-  return error;
-};
-
-const unauthorized = (message) => {
-  const error = new Error(message);
-  error.statusCode = 401;
-  return error;
-};
-
-const conflict = (message) => {
-  const error = new Error(message);
-  error.statusCode = 409;
-  return error;
-};
 
 export const registerUserService = async ({ first_name, last_name, email, password }) => {
   const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : email;

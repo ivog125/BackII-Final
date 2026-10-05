@@ -6,6 +6,7 @@ import {
   findTicketsByUser,
   findTicketsByEvent,
   updateTicketById,
+  deleteAllTickets,
 } from '../dao/tickets.dao.js';
 import { generateReservationCode } from '../utils/reservationCode.js';
 
@@ -29,3 +30,5 @@ export const countActiveQuantityForEvent = async (eventId) => {
 };
 
 export const cancelTicket = (ticketId) => updateTicketById(ticketId, { status: 'cancelled', cancelledAt: new Date() });
+
+export const deleteAll = () => deleteAllTickets();

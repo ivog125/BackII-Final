@@ -2,7 +2,7 @@ export const EventDTO = (event) => {
   if (!event) return null;
 
   return {
-    _id: event._id ?? event.id,
+    id: event.id ?? event._id,
     title: event.title,
     description: event.description,
     category: event.category,
@@ -11,7 +11,7 @@ export const EventDTO = (event) => {
     capacity: event.capacity,
     price: event.price,
     status: event.status,
-    organizer: event.organizer,
+    organizer: event.organizer ? event.organizer.toString() : event.organizer,
     createdAt: event.createdAt,
     updatedAt: event.updatedAt,
   };

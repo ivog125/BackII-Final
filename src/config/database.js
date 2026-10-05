@@ -7,10 +7,6 @@ export const connectDB = async () => {
     return;
   }
 
-  try {
-    await mongoose.connect(config.mongoUrl);
-    console.log('[database] Conectado a MongoDB');
-  } catch (error) {
-    console.error('[database] Error al conectar a MongoDB:', error.message);
-  }
+  await mongoose.connect(config.mongoUrl);
+  console.log('[database] Conectado a MongoDB');
 };

@@ -5,7 +5,7 @@ const ticketSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     event: { type: mongoose.Schema.Types.ObjectId, ref: 'Event', required: true },
-    status: { type: String, enum: TICKET_STATUSES, default: 'confirmed' },
+    status: { type: String, enum: TICKET_STATUSES, default: 'active' },
     quantity: { type: Number, required: true, min: 1 },
     reservationCode: { type: String, required: true, unique: true },
     cancelledAt: { type: Date, default: null },

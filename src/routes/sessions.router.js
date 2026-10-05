@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import passport from 'passport';
-import { getSessions, register, login, current, logout } from '../controllers/sessions.controller.js';
+import { register, login, current, logout } from '../controllers/sessions.controller.js';
 import { authMiddleware } from '../middlewares/auth.middleware.js';
 
 const router = Router();
@@ -32,7 +32,6 @@ const authenticate = (strategy) => (req, res, next) => {
   })(req, res, next);
 };
 
-router.get('/', getSessions);
 router.post('/register', authenticate('register'), register);
 router.post('/login', authenticate('login'), login);
 router.get('/current', authMiddleware, current);

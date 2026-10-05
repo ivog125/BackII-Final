@@ -10,7 +10,7 @@ import { EventDTO } from '../dto/event.dto.js';
 
 export const getEvents = catchAsync(async (req, res) => {
   const result = await listEventsService(req.query);
-  res.status(200).json({ ...result, data: result.data.map(EventDTO) });
+  res.status(200).json({ status: 'success', ...result, data: result.data.map(EventDTO) });
 });
 
 export const getEventById = catchAsync(async (req, res) => {

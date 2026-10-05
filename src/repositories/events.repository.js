@@ -1,4 +1,4 @@
-import { createEvent, findEvents, countEvents, findEventById, updateEventById } from '../dao/events.dao.js';
+import { createEvent, findEvents, countEvents, findEventById, updateEventById, deleteAllEvents } from '../dao/events.dao.js';
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -38,6 +38,8 @@ export const create = (eventData) => createEvent(eventData);
 export const findById = (id) => findEventById(id);
 
 export const update = (id, updateData) => updateEventById(id, updateData);
+
+export const deleteAll = () => deleteAllEvents();
 
 export const searchEvents = async ({ status, category, location, dateFrom, dateTo, page, limit, sort }) => {
   const filter = buildFilter({ status, category, location, dateFrom, dateTo });

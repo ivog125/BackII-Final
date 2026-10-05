@@ -4,9 +4,13 @@
   "description": "Backend base para una plataforma de eventos e inscripciones",
   "type": "module",
   "main": "src/server.js",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "node --watch src/server.js",
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "seed": "node scripts/seed.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

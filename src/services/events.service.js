@@ -1,33 +1,13 @@
 import { create, searchEvents, findById, update } from '../repositories/events.repository.js';
+import { countActiveQuantityForEvent } from '../repositories/tickets.repository.js';
 import { EVENT_STATUSES } from '../constants/event.constants.js';
+import { badRequest, forbidden, notFound, conflict } from '../utils/errors.js';
 
 const REQUIRED_FIELDS = ['title', 'description', 'category', 'location', 'date', 'capacity', 'price'];
+const SORTABLE_FIELDS = ['date', 'price', 'title', 'capacity', 'createdAt'];
+const MAX_LIMIT = 50;
 
 const isMissing = (value) => value === undefined || value === null || value === '';
-
-const notFoundError = () => {
-  const error = new Error('Evento no encontrado');
-  error.statusCode = 404;
-  return error;
-};
-
-const badRequest = (message) => {
-  const error = new Error(message);
-  error.statusCode = 400;
-  return error;
-};
-
-const forbidden = (message) => {
-  const error = new Error(message);
-  error.statusCode = 403;
-  return error;
-};
-
-const conflict = (message) => {
-  const error = new Error(message);
-  error.statusCode = 409;
-  return error;
-};
 
 const assertOwnership = (event, user) => {
   if (user.role === 'admin') {
@@ -73,6 +53,19 @@ const parseNonNegativeNumber = (value, message) => {
   return parsed;
 };
 
+const parseSort = (sort) => {
+  if (!sort) return { createdAt: -1 };
+
+  const direction = sort.startsWith('-') ? -1 : 1;
+  const field = sort.replace(/^-/, '');
+
+  if (!SORTABLE_FIELDS.includes(field)) {
+    throw badRequest(`Campo de orden inválido. Valores permitidos: ${SORTABLE_FIELDS.join(', ')}`);
+  }
+
+  return { [field]: direction };
+};
+
 const validateEventInput = (eventData) => {
   const missing = REQUIRED_FIELDS.filter((field) => isMissing(eventData[field]));
   if (missing.length) {
@@ -112,14 +105,8 @@ export const listEventsService = async (query = {}) => {
   const { status, category, location, dateFrom, dateTo, sort } = query;
 
   const page = Math.max(parseInt(query.page, 10) || 1, 1);
-  const limit = Math.max(parseInt(query.limit, 10) || 10, 1);
-
-  let sortOption = { createdAt: -1 };
-  if (sort) {
-    const direction = sort.startsWith('-') ? -1 : 1;
-    const field = sort.replace(/^-/, '');
-    sortOption = { [field]: direction };
-  }
+  const limit = Math.min(Math.max(parseInt(query.limit, 10) || 10, 1), MAX_LIMIT);
+  const sortOption = parseSort(sort);
 
   const { data, total } = await searchEvents({
     status,
@@ -144,7 +131,7 @@ export const listEventsService = async (query = {}) => {
 export const getEventByIdService = async (eventId) => {
   const event = await findById(eventId);
   if (!event) {
-    throw notFoundError();
+    throw notFound('Evento no encontrado');
   }
 
   return event;
@@ -157,7 +144,7 @@ export const updateEventService = async (eventId, user, updateData) => {
 
   const event = await findById(eventId);
   if (!event) {
-    throw notFoundError();
+    throw notFound('Evento no encontrado');
   }
 
   assertOwnership(event, user);
@@ -172,6 +159,11 @@ export const updateEventService = async (eventId, user, updateData) => {
 
   if (safeUpdateData.capacity !== undefined) {
     safeUpdateData.capacity = parsePositiveNumber(safeUpdateData.capacity, 'La capacidad debe ser mayor a 0');
+
+    const reservedQuantity = await countActiveQuantityForEvent(eventId);
+    if (safeUpdateData.capacity < reservedQuantity) {
+      throw conflict(`La capacidad no puede ser menor a los ${reservedQuantity} cupos ya reservados`);
+    }
   }
 
   if (safeUpdateData.price !== undefined) {
@@ -189,7 +181,7 @@ export const updateEventStatusService = async (eventId, user, status) => {
 
   const event = await findById(eventId);
   if (!event) {
-    throw notFoundError();
+    throw notFound('Evento no encontrado');
   }
 
   assertOwnership(event, user);

@@ -9,30 +9,7 @@ import {
   cancelTicket,
 } from '../repositories/tickets.repository.js';
 import { mailer } from '../utils/mailer.js';
-
-const notFoundError = (message) => {
-  const error = new Error(message);
-  error.statusCode = 404;
-  return error;
-};
-
-const badRequest = (message) => {
-  const error = new Error(message);
-  error.statusCode = 400;
-  return error;
-};
-
-const forbidden = (message) => {
-  const error = new Error(message);
-  error.statusCode = 403;
-  return error;
-};
-
-const conflict = (message) => {
-  const error = new Error(message);
-  error.statusCode = 409;
-  return error;
-};
+import { badRequest, forbidden, notFound, conflict } from '../utils/errors.js';
 
 const assertEventOwnerOrAdmin = (event, user) => {
   if (user.role === 'admin') {
@@ -71,10 +48,15 @@ export const createTicketService = async (user, eventId, { quantity }) => {
     throw conflict('Solo se puede inscribir a eventos publicados');
   }
 
+  // 3b. el evento todavía no ocurrió
+  if (new Date(event.date) < new Date()) {
+    throw conflict('El evento ya ocurrió');
+  }
+
   // 4. no hay ya una inscripción activa del mismo usuario para este evento
   const existingActiveTicket = await findActiveByUserAndEvent(user.id, eventId);
   if (existingActiveTicket) {
-    throw conflict('Ya tenés una inscripción activa para este evento');
+    throw conflict('Ya tenés una inscripción activa a este evento');
   }
 
   // 5. hay cupo suficiente
@@ -88,7 +70,7 @@ export const createTicketService = async (user, eventId, { quantity }) => {
     user: user.id,
     event: eventId,
     quantity: parsedQuantity,
-    status: 'confirmed',
+    status: 'active',
   });
 
   try {
@@ -122,7 +104,7 @@ export const listEventTicketsService = async (eventId, user) => {
 export const cancelTicketService = async (ticketId, user) => {
   const ticket = await findById(ticketId);
   if (!ticket) {
-    throw notFoundError('Ticket no encontrado');
+    throw notFound('Ticket no encontrado');
   }
 
   assertTicketOwnerOrAdmin(ticket, user);

@@ -1,0 +1,411 @@
+{
+  "info": {
+    "name": "Plataforma de Eventos e Inscripciones",
+    "description": "Colección de prueba end-to-end: sesiones, eventos y tickets. Postman maneja las cookies de sesión automáticamente (cookie jar por dominio). Cada bloque que necesita un rol distinto vuelve a loguearse explícitamente antes de la request que lo requiere, para que la colección corra de punta a punta sin depender del orden exacto en que Postman ejecute las carpetas.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080", "type": "string" },
+    { "key": "eventId", "value": "", "type": "string" },
+    { "key": "otherEventId", "value": "", "type": "string" },
+    { "key": "ticketId", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "1. Sesiones",
+      "item": [
+        {
+          "name": "Register (nuevo usuario)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Nuevo\",\n  \"last_name\": \"Usuario\",\n  \"email\": \"nuevo@eventos.com\",\n  \"password\": \"Password123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/sessions/register", "host": ["{{baseUrl}}"], "path": ["api", "sessions", "register"] }
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('201 Created', function () { pm.response.to.have.status(201); });"] } }
+          ]
+        },
+        {
+          "name": "Login - Admin",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"admin@eventos.com\",\n  \"password\": \"Password123\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/sessions/login", "host": ["{{baseUrl}}"], "path": ["api", "sessions", "login"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200 OK', function () { pm.response.to.have.status(200); });"] } }]
+        },
+        {
+          "name": "Login - Organizer1",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"organizer1@eventos.com\",\n  \"password\": \"Password123\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/sessions/login", "host": ["{{baseUrl}}"], "path": ["api", "sessions", "login"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200 OK', function () { pm.response.to.have.status(200); });"] } }]
+        },
+        {
+          "name": "Login - Organizer2",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"organizer2@eventos.com\",\n  \"password\": \"Password123\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/sessions/login", "host": ["{{baseUrl}}"], "path": ["api", "sessions", "login"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200 OK', function () { pm.response.to.have.status(200); });"] } }]
+        },
+        {
+          "name": "Login - User1",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"user1@eventos.com\",\n  \"password\": \"Password123\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/sessions/login", "host": ["{{baseUrl}}"], "path": ["api", "sessions", "login"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200 OK', function () { pm.response.to.have.status(200); });"] } }]
+        },
+        {
+          "name": "Login - User2",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"user2@eventos.com\",\n  \"password\": \"Password123\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/sessions/login", "host": ["{{baseUrl}}"], "path": ["api", "sessions", "login"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200 OK', function () { pm.response.to.have.status(200); });"] } }]
+        },
+        {
+          "name": "Current (el último logueado: User2)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/sessions/current", "host": ["{{baseUrl}}"], "path": ["api", "sessions", "current"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200 OK', function () { pm.response.to.have.status(200); });"] } }]
+        }
+      ]
+    },
+    {
+      "name": "2. Eventos",
+      "item": [
+        {
+          "name": "Login - Organizer1 (para crear su evento)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"organizer1@eventos.com\",\n  \"password\": \"Password123\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/sessions/login", "host": ["{{baseUrl}}"], "path": ["api", "sessions", "login"] }
+          }
+        },
+        {
+          "name": "Crear evento (Organizer1) -> guarda eventId",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Congreso Tech\",\n  \"description\": \"Charlas de backend\",\n  \"category\": \"Workshop\",\n  \"location\": \"CABA\",\n  \"date\": \"2026-12-10\",\n  \"capacity\": 5,\n  \"price\": 0\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/events", "host": ["{{baseUrl}}"], "path": ["api", "events"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', function () { pm.response.to.have.status(201); });",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('eventId', json.payload.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login - Organizer2 (para crear su evento)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"organizer2@eventos.com\",\n  \"password\": \"Password123\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/sessions/login", "host": ["{{baseUrl}}"], "path": ["api", "sessions", "login"] }
+          }
+        },
+        {
+          "name": "Crear evento ajeno (Organizer2) -> guarda otherEventId",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Meetup de organizer2\",\n  \"description\": \"Evento ajeno para probar permisos\",\n  \"category\": \"Meetup\",\n  \"location\": \"Rosario\",\n  \"date\": \"2026-12-15\",\n  \"capacity\": 10,\n  \"price\": 0\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/events", "host": ["{{baseUrl}}"], "path": ["api", "events"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', function () { pm.response.to.have.status(201); });",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('otherEventId', json.payload.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login - User1 (para probar 403 al crear evento)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"user1@eventos.com\",\n  \"password\": \"Password123\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/sessions/login", "host": ["{{baseUrl}}"], "path": ["api", "sessions", "login"] }
+          }
+        },
+        {
+          "name": "Crear evento como user1 (esperado 403)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"x\",\n  \"description\": \"x\",\n  \"category\": \"x\",\n  \"location\": \"x\",\n  \"date\": \"2026-12-20\",\n  \"capacity\": 1,\n  \"price\": 0\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/events", "host": ["{{baseUrl}}"], "path": ["api", "events"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('403 Forbidden', function () { pm.response.to.have.status(403); });"] } }]
+        },
+        {
+          "name": "Login - Organizer1 (para publicar su evento)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"organizer1@eventos.com\",\n  \"password\": \"Password123\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/sessions/login", "host": ["{{baseUrl}}"], "path": ["api", "sessions", "login"] }
+          }
+        },
+        {
+          "name": "Publicar evento propio (PATCH status)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"published\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/events/{{eventId}}/status", "host": ["{{baseUrl}}"], "path": ["api", "events", "{{eventId}}", "status"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200 OK', function () { pm.response.to.have.status(200); });"] } }]
+        },
+        {
+          "name": "Login - Organizer2 (para publicar su propio evento)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"organizer2@eventos.com\",\n  \"password\": \"Password123\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/sessions/login", "host": ["{{baseUrl}}"], "path": ["api", "sessions", "login"] }
+          }
+        },
+        {
+          "name": "Publicar el evento de Organizer2 (su propio evento)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"published\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/events/{{otherEventId}}/status", "host": ["{{baseUrl}}"], "path": ["api", "events", "{{otherEventId}}", "status"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200 OK', function () { pm.response.to.have.status(200); });"] } }]
+        },
+        {
+          "name": "Listar eventos paginados (público)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/events?status=published&page=1&limit=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "events"],
+              "query": [
+                { "key": "status", "value": "published" },
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "5" }
+              ]
+            }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200 OK', function () { pm.response.to.have.status(200); });"] } }]
+        },
+        {
+          "name": "Obtener evento por id (público)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/events/{{eventId}}", "host": ["{{baseUrl}}"], "path": ["api", "events", "{{eventId}}"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200 OK', function () { pm.response.to.have.status(200); });"] } }]
+        },
+        {
+          "name": "Login - Organizer1 (para intentar tocar el evento ajeno)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"organizer1@eventos.com\",\n  \"password\": \"Password123\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/sessions/login", "host": ["{{baseUrl}}"], "path": ["api", "sessions", "login"] }
+          }
+        },
+        {
+          "name": "Modificar evento ajeno como Organizer1 (esperado 403)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"price\": 999\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/events/{{otherEventId}}", "host": ["{{baseUrl}}"], "path": ["api", "events", "{{otherEventId}}"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('403 Forbidden', function () { pm.response.to.have.status(403); });"] } }]
+        },
+        {
+          "name": "Login - Admin (para modificar cualquier evento)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"admin@eventos.com\",\n  \"password\": \"Password123\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/sessions/login", "host": ["{{baseUrl}}"], "path": ["api", "sessions", "login"] }
+          }
+        },
+        {
+          "name": "Modificar evento ajeno como Admin (esperado 200)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"price\": 1234\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/events/{{otherEventId}}", "host": ["{{baseUrl}}"], "path": ["api", "events", "{{otherEventId}}"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200 OK', function () { pm.response.to.have.status(200); });"] } }]
+        }
+      ]
+    },
+    {
+      "name": "3. Tickets",
+      "item": [
+        {
+          "name": "Login - User1 (para inscribirse)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"user1@eventos.com\",\n  \"password\": \"Password123\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/sessions/login", "host": ["{{baseUrl}}"], "path": ["api", "sessions", "login"] }
+          }
+        },
+        {
+          "name": "Inscribirse (User1) -> guarda ticketId",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"quantity\": 1\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/events/{{eventId}}/tickets", "host": ["{{baseUrl}}"], "path": ["api", "events", "{{eventId}}", "tickets"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', function () { pm.response.to.have.status(201); });",
+                  "const json = pm.response.json();",
+                  "pm.test('reservationCode con formato EVT-XXXXXX', function () { pm.expect(json.payload.reservationCode).to.match(/^EVT-[A-Z0-9]{6}$/); });",
+                  "pm.collectionVariables.set('ticketId', json.payload.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Inscripción duplicada (User1, esperado 409)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"quantity\": 1\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/events/{{eventId}}/tickets", "host": ["{{baseUrl}}"], "path": ["api", "events", "{{eventId}}", "tickets"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('409 Conflict', function () { pm.response.to.have.status(409); });"] } }]
+        },
+        {
+          "name": "Login - Organizer1 (dueño del evento, para ver inscriptos)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"organizer1@eventos.com\",\n  \"password\": \"Password123\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/sessions/login", "host": ["{{baseUrl}}"], "path": ["api", "sessions", "login"] }
+          }
+        },
+        {
+          "name": "Listar tickets del evento (Organizer1)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/events/{{eventId}}/tickets", "host": ["{{baseUrl}}"], "path": ["api", "events", "{{eventId}}", "tickets"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200 OK', function () { pm.response.to.have.status(200); });"] } }]
+        },
+        {
+          "name": "Login - User1 (para ver y cancelar su inscripción)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"user1@eventos.com\",\n  \"password\": \"Password123\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/sessions/login", "host": ["{{baseUrl}}"], "path": ["api", "sessions", "login"] }
+          }
+        },
+        {
+          "name": "Mis inscripciones (User1)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/tickets/my-tickets", "host": ["{{baseUrl}}"], "path": ["api", "tickets", "my-tickets"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200 OK', function () { pm.response.to.have.status(200); });"] } }]
+        },
+        {
+          "name": "Cancelar inscripción (User1)",
+          "request": {
+            "method": "PATCH",
+            "url": { "raw": "{{baseUrl}}/api/tickets/{{ticketId}}/cancel", "host": ["{{baseUrl}}"], "path": ["api", "tickets", "{{ticketId}}", "cancel"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200 OK', function () { pm.response.to.have.status(200); });"] } }]
+        },
+        {
+          "name": "Cancelar de nuevo el mismo ticket (esperado 409)",
+          "request": {
+            "method": "PATCH",
+            "url": { "raw": "{{baseUrl}}/api/tickets/{{ticketId}}/cancel", "host": ["{{baseUrl}}"], "path": ["api", "tickets", "{{ticketId}}", "cancel"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('409 Conflict', function () { pm.response.to.have.status(409); });"] } }]
+        }
+      ]
+    },
+    {
+      "name": "4. Cierre de sesión",
+      "item": [
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/api/sessions/logout", "host": ["{{baseUrl}}"], "path": ["api", "sessions", "logout"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200 OK', function () { pm.response.to.have.status(200); });"] } }]
+        },
+        {
+          "name": "Current tras logout (esperado 401)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/sessions/current", "host": ["{{baseUrl}}"], "path": ["api", "sessions", "current"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('401 Unauthorized', function () { pm.response.to.have.status(401); });"] } }]
+        }
+      ]
+    }
+  ]
+}

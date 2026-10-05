@@ -1,1 +1,1 @@
-export const TICKET_STATUSES = ['confirmed', 'pending', 'cancelled'];
+export const TICKET_STATUSES = ['active', 'cancelled'];
